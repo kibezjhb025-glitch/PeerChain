@@ -1,18 +1,19 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
   Volume2,
   Upload,
   FileText,
   AudioLines,
   CheckCircle,
   Clock,
-  Loader2
+  Loader2,
+  Trash2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,13 +25,25 @@ import { Badge } from "@/components/ui/badge"
 function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
-  const [duration] = useState(180) // 3 minutes
+  const [duration, setDuration] = useState(180)
   const [volume, setVolume] = useState([75])
+  const audioRef = useRef<HTMLAudioElement>(null)
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const handlePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause()
+      } else {
+        audioRef.current.play()
+      }
+      setIsPlaying(!isPlaying)
+    }
   }
 
   return (
@@ -39,19 +52,19 @@ function AudioPlayer() {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AudioLines className="h-5 w-5 text-primary" />
-            <span className="text-sm font-medium text-foreground">Now Playing</span>
+            <span className="text-sm font-medium text-foreground">Audio Brief</span>
           </div>
-          <Badge className="bg-primary/20 text-primary border-0">Audio Brief</Badge>
+          <Badge className="bg-primary/20 text-primary border-0">ElevenLabs</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Track Info */}
         <div className="rounded-lg bg-muted/30 p-4">
           <h4 className="font-medium text-foreground">
-            Introduction to Solana Development
+            PeerChain Introduction
           </h4>
           <p className="text-sm text-muted-foreground mt-1">
-            A comprehensive overview of building on Solana blockchain
+            Learn how StudyStream converts learning into value
           </p>
         </div>
 
@@ -96,7 +109,7 @@ function AudioPlayer() {
           <Button
             size="icon"
             className="h-12 w-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 glow-green"
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={handlePlayPause}
           >
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
           </Button>
@@ -116,201 +129,106 @@ function AudioPlayer() {
             className="flex-1"
           />
         </div>
+
+        <audio ref={audioRef} />
       </CardContent>
     </Card>
   )
 }
 
-// Document Upload Dropzone
-function DocumentDropzone() {
-  const [isDragging, setIsDragging] = useState(false)
-  const [uploadedFile, setUploadedFile] = useState<string | null>(null)
-  const [isConverting, setIsConverting] = useState(false)
-  const [conversionProgress, setConversionProgress] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+// Text to Audio Component
+function TextToAudio() {
+  const [text, setText] = useState("")
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) {
-      handleFileUpload(file.name)
+  const generateAudio = async () => {
+    if (!text.trim()) return
+
+    setIsGenerating(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voiceId: undefined }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to generate audio")
+      }
+
+      const audioBlob = await response.blob()
+      const url = URL.createObjectURL(audioBlob)
+      setAudioUrl(url)
+    } catch (err) {
+      setError("Failed to generate audio. Check ElevenLabs API key.")
+      console.error("TTS error:", err)
+    } finally {
+      setIsGenerating(false)
     }
   }
 
-  const handleFileUpload = (fileName: string) => {
-    setUploadedFile(fileName)
-    setIsConverting(true)
-    setConversionProgress(0)
-    
-    // Simulate conversion progress
-    const interval = setInterval(() => {
-      setConversionProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsConverting(false)
-          return 100
-        }
-        return prev + 10
-      })
-    }, 500)
+  const clearAudio = () => {
+    if (audioUrl) {
+      URL.revokeObjectURL(audioUrl)
+      setAudioUrl(null)
+    }
+    setText("")
   }
 
   return (
     <Card className="glass-card border-border/50">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
-          <Upload className="h-4 w-4 text-secondary" />
-          <span className="text-muted-foreground">Convert Doc to Audio</span>
+          <AudioLines className="h-4 w-4 text-secondary" />
+          <span className="text-muted-foreground">Generate Audio Brief</span>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept=".pdf,.doc,.docx,.txt,.md"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) handleFileUpload(file.name)
-          }}
+      <CardContent className="space-y-4">
+        <textarea
+          placeholder="Enter text to convert to speech..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="w-full min-h-[100px] rounded-lg border border-border/50 bg-input/50 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
         />
-        
-        {!uploadedFile ? (
-          <div
-            className={`rounded-lg border-2 border-dashed p-8 text-center transition-all cursor-pointer ${
-              isDragging
-                ? "border-secondary bg-secondary/10"
-                : "border-border/50 hover:border-secondary/50 hover:bg-muted/20"
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault()
-              setIsDragging(true)
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
-            <p className="mt-3 text-sm text-foreground">
-              Drop your document here
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              PDF, DOC, TXT, or MD files supported
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
-              <FileText className="h-8 w-8 text-secondary" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {uploadedFile}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {isConverting ? "Converting..." : "Ready to play"}
-                </p>
-              </div>
-              {isConverting ? (
-                <Loader2 className="h-5 w-5 text-secondary animate-spin" />
-              ) : (
-                <CheckCircle className="h-5 w-5 text-primary" />
-              )}
-            </div>
-            
-            {isConverting && (
-              <div className="space-y-2">
-                <Progress value={conversionProgress} className="h-2 bg-muted/30" />
-                <p className="text-xs text-center text-muted-foreground">
-                  Processing with ElevenLabs... {conversionProgress}%
-                </p>
-              </div>
-            )}
-            
-            {!isConverting && conversionProgress === 100 && (
-              <Button className="w-full bg-primary/10 text-primary hover:bg-primary/20">
-                <Play className="mr-2 h-4 w-4" />
-                Play Audio Summary
-              </Button>
-            )}
+
+        {error && (
+          <p className="text-xs text-destructive">{error}</p>
+        )}
+
+        {audioUrl && (
+          <div className="rounded-lg bg-muted/30 p-3">
+            <audio controls src={audioUrl} className="w-full" />
           </div>
         )}
-      </CardContent>
-    </Card>
-  )
-}
 
-// Audio Library
-const audioBriefs = [
-  {
-    id: "1",
-    title: "Solana Smart Contracts 101",
-    duration: "3:24",
-    status: "ready",
-  },
-  {
-    id: "2",
-    title: "Understanding Token Programs",
-    duration: "5:12",
-    status: "ready",
-  },
-  {
-    id: "3",
-    title: "DeFi Protocol Architecture",
-    duration: "4:45",
-    status: "processing",
-  },
-  {
-    id: "4",
-    title: "NFT Metadata Standards",
-    duration: "2:58",
-    status: "ready",
-  },
-]
-
-function AudioLibrary() {
-  return (
-    <Card className="glass-card border-border/50">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-sm font-medium">
-          <span className="text-muted-foreground">Audio Library</span>
-          <Badge variant="outline" className="text-primary border-primary/30">
-            {audioBriefs.filter(a => a.status === "ready").length} Ready
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {audioBriefs.map((brief) => (
-          <div
-            key={brief.id}
-            className="flex items-center justify-between rounded-lg bg-muted/30 p-3 transition-all hover:bg-muted/50 cursor-pointer"
+        <div className="flex gap-2">
+          <Button
+            className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/90 glow-blue"
+            onClick={generateAudio}
+            disabled={isGenerating || !text.trim()}
           >
-            <div className="flex items-center gap-3">
-              {brief.status === "ready" ? (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20">
-                  <Play className="h-3 w-3 text-primary ml-0.5" />
-                </div>
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/50">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
-                </div>
-              )}
-              <div>
-                <p className="text-sm font-medium text-foreground">{brief.title}</p>
-                <p className="text-xs text-muted-foreground">{brief.duration}</p>
-              </div>
-            </div>
-            <Badge
-              className={`text-xs ${
-                brief.status === "ready"
-                  ? "bg-primary/20 text-primary"
-                  : "bg-muted/50 text-muted-foreground"
-              } border-0`}
-            >
-              {brief.status === "ready" ? "Ready" : "Processing"}
-            </Badge>
-          </div>
-        ))}
+            {isGenerating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <AudioLines className="mr-2 h-4 w-4" />
+                Generate Audio
+              </>
+            )}
+          </Button>
+          {audioUrl && (
+            <Button variant="outline" size="icon" onClick={clearAudio}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
@@ -321,10 +239,7 @@ export function AudioSuite() {
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
         <AudioPlayer />
-        <div className="space-y-6">
-          <DocumentDropzone />
-          <AudioLibrary />
-        </div>
+        <TextToAudio />
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Search, Star, Calendar, CheckCircle, Clock, Filter } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Search, Star, Calendar, CheckCircle, Clock, Filter, Loader2, Plus } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,10 +14,25 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { useWallet } from "@solana/wallet-adapter-react"
+import { PublicKey } from "@solana/web3.js"
 
 const techTags = ["All", "Java", "Rust", "Web3", "Solidity", "Python", "TypeScript"]
 
-const mentors = [
+interface Mentor {
+  id: string
+  name: string
+  handle: string
+  avatar: string
+  reputation: number
+  tags: string[]
+  sessionsCompleted: number
+  rating: number
+  available: boolean
+}
+
+// Mock mentors - in production, fetch from backend/program
+const mentors: Mentor[] = [
   {
     id: "1",
     name: "Alex Rustacean",
@@ -27,7 +42,6 @@ const mentors = [
     tags: ["Rust", "Web3", "Solidity"],
     sessionsCompleted: 48,
     rating: 4.9,
-    proofOfLearning: ["Rust fundamentals", "Smart contracts", "DeFi protocols"],
     available: true,
   },
   {
@@ -39,7 +53,6 @@ const mentors = [
     tags: ["Web3", "TypeScript", "React"],
     sessionsCompleted: 32,
     rating: 4.8,
-    proofOfLearning: ["dApp development", "Wallet integration", "NFT minting"],
     available: true,
   },
   {
@@ -51,7 +64,6 @@ const mentors = [
     tags: ["Java", "Spring", "Microservices"],
     sessionsCompleted: 56,
     rating: 4.7,
-    proofOfLearning: ["Spring Boot", "JPA/Hibernate", "API design"],
     available: false,
   },
   {
@@ -63,39 +75,55 @@ const mentors = [
     tags: ["Solidity", "Rust", "Web3"],
     sessionsCompleted: 28,
     rating: 4.9,
-    proofOfLearning: ["Anchor framework", "Token programs", "SPL tokens"],
     available: true,
   },
 ]
 
-const scheduledSessions = [
-  {
-    id: "1",
-    mentor: "Alex Rustacean",
-    topic: "Rust Ownership Deep Dive",
-    date: "Today, 3:00 PM",
-    status: "upcoming",
-  },
-  {
-    id: "2",
-    mentor: "Sarah Chen",
-    topic: "Building a DEX Frontend",
-    date: "Tomorrow, 10:00 AM",
-    status: "upcoming",
-  },
-  {
-    id: "3",
-    mentor: "Marcus Java",
-    topic: "Spring Security Basics",
-    date: "Yesterday",
-    status: "verified",
-    txHash: "7f6e5d4c3b2a",
-  },
-]
+interface Session {
+  id: string
+  mentor: string
+  topic: string
+  date: string
+  status: "upcoming" | "verified"
+  txHash?: string
+}
 
 export function LearningHub() {
+  const { publicKey, connected } = useWallet()
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTag, setSelectedTag] = useState("All")
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (connected && publicKey) {
+      fetchSessions()
+    }
+  }, [connected, publicKey])
+
+  const fetchSessions = async () => {
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/sessions?user=${publicKey?.toBase58()}`)
+      const data = await response.json()
+      if (data.success) {
+        // Transform API data to UI format
+        const formattedSessions = data.data.map((s: any) => ({
+          id: s.sessionId,
+          mentor: s.mentor,
+          topic: "Peer Learning Session",
+          date: new Date(s.timestamp).toLocaleDateString(),
+          status: s.completed ? "verified" as const : "upcoming" as const,
+          txHash: s.sessionId.slice(0, 12),
+        }))
+        setSessions(formattedSessions)
+      }
+    } catch (error) {
+      console.error("Failed to fetch sessions:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredMentors = mentors.filter((mentor) => {
     const matchesSearch =
@@ -219,19 +247,22 @@ export function LearningHub() {
                           </div>
                         </DialogTitle>
                         <DialogDescription>
-                          Proof of Learning History
+                          Mentor Profile & Proof of Learning
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-3 mt-4">
-                        {mentor.proofOfLearning.map((item, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center gap-3 rounded-lg bg-muted/30 p-3"
-                          >
-                            <CheckCircle className="h-4 w-4 text-primary" />
-                            <span className="text-sm text-foreground">{item}</span>
-                          </div>
-                        ))}
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-primary" />
+                          <span className="text-sm text-foreground">
+                            {mentor.sessionsCompleted} sessions completed
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Star className="h-4 w-4 text-primary fill-current" />
+                          <span className="text-sm text-foreground">
+                            {mentor.rating} average rating
+                          </span>
+                        </div>
                       </div>
                       <Button className="mt-4 w-full bg-primary text-primary-foreground hover:bg-primary/90 glow-green">
                         <Calendar className="mr-2 h-4 w-4" />
@@ -247,46 +278,66 @@ export function LearningHub() {
 
         {/* Scheduled Sessions */}
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold text-foreground">Scheduled Sessions</h3>
+          <h3 className="text-lg font-semibold text-foreground">Your Sessions</h3>
           <Card className="glass-card border-border/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Your upcoming peer reviews
+                {connected ? "Your peer learning sessions" : "Connect wallet to view"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {scheduledSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="rounded-lg bg-muted/30 p-3 transition-all hover:bg-muted/50"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="font-medium text-foreground text-sm">
-                        {session.topic}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        with {session.mentor}
-                      </p>
-                    </div>
-                    {session.status === "verified" ? (
-                      <CheckCircle className="h-4 w-4 text-primary" />
-                    ) : (
-                      <Clock className="h-4 w-4 text-secondary" />
-                    )}
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      {session.date}
-                    </span>
-                    {session.txHash && (
-                      <span className="font-mono text-[10px] text-primary">
-                        tx: {session.txHash}...
-                      </span>
-                    )}
-                  </div>
+              {loading ? (
+                <div className="py-4 text-center">
+                  <Loader2 className="mx-auto h-4 w-4 animate-spin text-primary" />
                 </div>
-              ))}
+              ) : !connected ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  Connect your wallet to view sessions
+                </div>
+              ) : sessions.length > 0 ? (
+                sessions.map((session) => (
+                  <div
+                    key={session.id}
+                    className="rounded-lg bg-muted/30 p-3 transition-all hover:bg-muted/50"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-foreground text-sm">
+                          {session.topic}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          with {session.mentor}
+                        </p>
+                      </div>
+                      {session.status === "verified" ? (
+                        <CheckCircle className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-secondary" />
+                      )}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        {session.date}
+                      </span>
+                      {session.txHash && (
+                        <span className="font-mono text-[10px] text-primary">
+                          tx: {session.txHash}...
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  No sessions yet. Start learning!
+                </div>
+              )}
+              {connected && (
+                <Button variant="outline" className="w-full mt-2 border-dashed border-border/50">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Schedule New Session
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>

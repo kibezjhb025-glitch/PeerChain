@@ -1,15 +1,16 @@
 "use client"
 
-import { useState } from "react"
-import { 
-  DollarSign, 
-  Users, 
-  TrendingUp, 
-  Plus, 
+import { useState, useEffect } from "react"
+import {
+  DollarSign,
+  Users,
+  TrendingUp,
+  Plus,
   AudioLines,
   CheckCircle,
   Clock,
-  Sparkles
+  Sparkles,
+  Loader2,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { useWallet } from "@solana/wallet-adapter-react"
 
 // Social Collateral Meter
 function SocialCollateralMeter({ score }: { score: number }) {
@@ -58,15 +60,15 @@ function SocialCollateralMeter({ score }: { score: number }) {
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             <div className="rounded-lg bg-muted/30 p-2">
               <p className="text-muted-foreground">Sessions</p>
-              <p className="font-semibold text-primary">24</p>
+              <p className="font-semibold text-primary">0</p>
             </div>
             <div className="rounded-lg bg-muted/30 p-2">
               <p className="text-muted-foreground">Reviews</p>
-              <p className="font-semibold text-primary">18</p>
+              <p className="font-semibold text-primary">0</p>
             </div>
             <div className="rounded-lg bg-muted/30 p-2">
               <p className="text-muted-foreground">Endorsements</p>
-              <p className="font-semibold text-primary">12</p>
+              <p className="font-semibold text-primary">0</p>
             </div>
           </div>
         </div>
@@ -75,32 +77,36 @@ function SocialCollateralMeter({ score }: { score: number }) {
   )
 }
 
-// Audio Waveform Visualizer
-function AudioWaveform({ isPlaying }: { isPlaying: boolean }) {
-  // Pre-defined heights to avoid hydration mismatch from Math.random()
-  const barHeights = [16, 24, 20, 28, 12, 22, 18, 30, 14, 26, 20, 24, 16, 28, 22, 18, 26, 14, 30, 20]
-  
-  return (
-    <div className="flex items-center justify-center gap-0.5 h-8">
-      {barHeights.map((height, i) => (
-        <div
-          key={i}
-          className={`w-1 rounded-full bg-secondary transition-all duration-150 ${
-            isPlaying ? "animate-pulse" : ""
-          }`}
-          style={{
-            height: isPlaying ? `${height}px` : "4px",
-            animationDelay: `${i * 50}ms`,
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
 // Request Grant Modal
 function RequestGrantModal() {
   const [isRecording, setIsRecording] = useState(false)
+  const [amount, setAmount] = useState("")
+  const [purpose, setPurpose] = useState("")
+  const { publicKey } = useWallet()
+
+  const handleSubmit = async () => {
+    if (!publicKey || !amount || !purpose) return
+
+    try {
+      const response = await fetch("/api/funding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requestId: publicKey.toBase58(),
+          amount: parseFloat(amount) * 1_000_000_000, // Convert SOL to lamports
+          reason: purpose,
+          reputationScore: 0, // Will be fetched from profile
+        }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        alert("Funding request submitted!")
+      }
+    } catch (error) {
+      console.error("Failed to submit funding request:", error)
+    }
+  }
 
   return (
     <Dialog>
@@ -128,6 +134,8 @@ function RequestGrantModal() {
               placeholder="0.5"
               type="number"
               step="0.1"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               className="bg-input/50 border-border/50"
             />
           </div>
@@ -136,14 +144,15 @@ function RequestGrantModal() {
             <Textarea
               id="purpose"
               placeholder="Describe what you'll use the funding for..."
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
               className="bg-input/50 border-border/50 min-h-[80px]"
             />
           </div>
           <div className="space-y-2">
             <Label>Voice Pitch (ElevenLabs)</Label>
             <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
-              <AudioWaveform isPlaying={isRecording} />
-              <div className="mt-3 flex justify-center">
+              <div className="flex justify-center">
                 <Button
                   variant="outline"
                   size="sm"
@@ -160,7 +169,10 @@ function RequestGrantModal() {
               </div>
             </div>
           </div>
-          <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 glow-blue">
+          <Button
+            className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90 glow-blue"
+            onClick={handleSubmit}
+          >
             Submit Request
           </Button>
         </div>
@@ -169,49 +181,65 @@ function RequestGrantModal() {
   )
 }
 
-// Active Funding Requests Marketplace
-const fundingRequests = [
-  {
-    id: "1",
-    requester: "@devlearner",
-    avatar: "DL",
-    amount: "0.5 SOL",
-    purpose: "Complete Rust smart contract course",
-    collateralScore: 72,
-    backers: 3,
-    progress: 60,
-    hasVoicePitch: true,
-  },
-  {
-    id: "2",
-    requester: "@web3newbie",
-    avatar: "WN",
-    amount: "0.3 SOL",
-    purpose: "Build portfolio dApp project",
-    collateralScore: 58,
-    backers: 2,
-    progress: 40,
-    hasVoicePitch: false,
-  },
-  {
-    id: "3",
-    requester: "@chaindev",
-    avatar: "CD",
-    amount: "1.0 SOL",
-    purpose: "Attend Web3 bootcamp certification",
-    collateralScore: 85,
-    backers: 5,
-    progress: 80,
-    hasVoicePitch: true,
-  },
-]
+interface FundingRequest {
+  requestId: string
+  requester: string
+  amount: string
+  purpose: string
+  collateralScore: number
+  progress: number
+  hasVoicePitch: boolean
+}
 
 export function FundingLedger() {
+  const { publicKey, connected, connection } = useWallet()
+  const [reputationScore, setReputationScore] = useState(0)
+  const [fundingRequests, setFundingRequests] = useState<FundingRequest[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (connected && publicKey) {
+      fetchData()
+    }
+  }, [connected, publicKey])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      // Fetch reputation
+      const repResponse = await fetch(`/api/reputation?user=${publicKey?.toBase58()}`)
+      const repData = await repResponse.json()
+      if (repData.success) {
+        setReputationScore(repData.data.score)
+      }
+
+      // Fetch funding requests
+      const fundResponse = await fetch(`/api/funding?user=${publicKey?.toBase58()}`)
+      const fundData = await fundResponse.json()
+      if (fundData.success) {
+        const formatted = fundData.data.map((r: any) => ({
+          requestId: r.requestId,
+          requester: r.requester,
+          amount: `${r.amount / 1_000_000_000} SOL`,
+          purpose: r.reason,
+          collateralScore: r.reputationScore,
+          progress: r.status === "Approved" ? 100 : r.status === "Pending" ? 50 : 0,
+          hasVoicePitch: false,
+        }))
+        setFundingRequests(formatted)
+      }
+    } catch (error) {
+      console.error("Failed to fetch funding data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Social Collateral Meter */}
-        <SocialCollateralMeter score={72} />
+        <SocialCollateralMeter score={reputationScore} />
 
         {/* Quick Stats */}
         <Card className="glass-card border-border/50">
@@ -226,21 +254,21 @@ export function FundingLedger() {
                 <DollarSign className="h-4 w-4 text-secondary" />
                 <span className="text-sm text-muted-foreground">Total Received</span>
               </div>
-              <span className="font-semibold text-secondary">2.8 SOL</span>
+              <span className="font-semibold text-secondary">0 SOL</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-primary" />
                 <span className="text-sm text-muted-foreground">Backers</span>
               </div>
-              <span className="font-semibold text-primary">7</span>
+              <span className="font-semibold text-primary">0</span>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 <span className="text-sm text-muted-foreground">Success Rate</span>
               </div>
-              <span className="font-semibold text-primary">85%</span>
+              <span className="font-semibold text-primary">0%</span>
             </div>
           </CardContent>
         </Card>
@@ -253,11 +281,19 @@ export function FundingLedger() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Your social collateral qualifies you for micro-grants up to{" "}
-              <span className="text-secondary font-semibold">1.5 SOL</span>
-            </p>
-            <RequestGrantModal />
+            {connected ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Your social collateral qualifies you for micro-grants up to{" "}
+                  <span className="text-secondary font-semibold">1.5 SOL</span>
+                </p>
+                <RequestGrantModal />
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Connect wallet to request funding
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -266,55 +302,68 @@ export function FundingLedger() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground">Funding Marketplace</h3>
-          <Badge variant="outline" className="text-secondary border-secondary/30">
-            {fundingRequests.length} Active Requests
-          </Badge>
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : (
+            <Badge variant="outline" className="text-secondary border-secondary/30">
+              {fundingRequests.length} Active Requests
+            </Badge>
+          )}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {fundingRequests.map((request) => (
-            <Card key={request.id} className="glass-card border-border/50 hover:border-secondary/30 transition-all">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary/20 text-secondary font-semibold">
-                      {request.avatar}
-                    </div>
+        {!connected ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">
+            Connect wallet to view funding requests
+          </div>
+        ) : loading ? (
+          <div className="text-center py-4">
+            <Loader2 className="mx-auto h-4 w-4 animate-spin text-primary" />
+          </div>
+        ) : fundingRequests.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {fundingRequests.map((request) => (
+              <Card key={request.requestId} className="glass-card border-border/50 hover:border-secondary/30 transition-all">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-mono text-sm text-foreground">{request.requester}</p>
+                      <p className="font-mono text-sm text-foreground">{request.requester.slice(0, 12)}...</p>
                       <p className="text-xs text-muted-foreground">
                         Score: {request.collateralScore}
                       </p>
                     </div>
+                    {request.hasVoicePitch && (
+                      <AudioLines className="h-4 w-4 text-secondary" />
+                    )}
                   </div>
-                  {request.hasVoicePitch && (
-                    <AudioLines className="h-4 w-4 text-secondary" />
-                  )}
-                </div>
 
-                <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
-                  {request.purpose}
-                </p>
+                  <p className="mt-3 text-sm text-muted-foreground line-clamp-2">
+                    {request.purpose}
+                  </p>
 
-                <div className="mt-4 space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-secondary font-semibold">{request.amount}</span>
-                    <span className="text-muted-foreground">{request.progress}% funded</span>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-secondary font-semibold">{request.amount}</span>
+                      <span className="text-muted-foreground">{request.progress}% funded</span>
+                    </div>
+                    <Progress value={request.progress} className="h-1.5 bg-muted/30" />
                   </div>
-                  <Progress value={request.progress} className="h-1.5 bg-muted/30" />
-                </div>
 
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    {request.backers} backers
-                  </span>
-                  <Button size="sm" className="bg-secondary/10 text-secondary hover:bg-secondary/20">
-                    Back Project
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      {/* Backers count would come from API */}
+                    </span>
+                    <Button size="sm" className="bg-secondary/10 text-secondary hover:bg-secondary/20">
+                      Back Project
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-sm text-muted-foreground">
+            No funding requests yet. Be the first to request!
+          </div>
+        )}
       </div>
     </div>
   )

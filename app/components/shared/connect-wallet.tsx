@@ -1,90 +1,105 @@
-"use client";
+"use client"
 
-import { useEffect, useState } from "react";
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { useWalletModal } from "@solana/wallet-adapter-react-ui";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { Button } from "@/components/ui/button";
-import { Wallet, LogOut, ExternalLink } from "lucide-react";
+import { useState, useEffect } from "react"
+import { Wallet, ChevronDown, Copy, ExternalLink, LogOut } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useWallet, useConnection } from "@solana/wallet-adapter-react"
+import { PublicKey } from "@solana/web3.js"
 
 export function ConnectWallet() {
-  const { connection } = useConnection();
-  const { publicKey, disconnect, connected } = useWallet();
-  const { setVisible } = useWalletModal();
-  const [balance, setBalance] = useState<number | null>(null);
+  const { publicKey, connected, connect, disconnect, wallet } = useWallet()
+  const { connection } = useConnection()
+  const [balance, setBalance] = useState<number | null>(null)
+  const [copied, setCopied] = useState(false)
 
-  // Fetch balance when public key changes
   useEffect(() => {
-    if (!publicKey) return;
+    if (connected && publicKey && connection) {
+      connection.getBalance(publicKey).then((lamports) => {
+        setBalance(lamports / 1_000_000_000)
+      }).catch(() => setBalance(null))
+    } else {
+      setBalance(null)
+    }
+  }, [connected, publicKey, connection])
 
-    const fetchBalance = async () => {
-      const updatedBalance = await connection.getBalance(publicKey);
-      setBalance(updatedBalance / LAMPORTS_PER_SOL);
-    };
+  const truncatedAddress = publicKey
+    ? `${publicKey.toBase58().slice(0, 6)}...${publicKey.toBase58().slice(-4)}`
+    : ""
 
-    fetchBalance();
+  const copyAddress = async () => {
+    if (publicKey) {
+      await navigator.clipboard.writeText(publicKey.toBase58())
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
 
-    // Optional: Subscribe to account changes for real-time balance updates
-    const subscriptionId = connection.onAccountChange(publicKey, (account) => {
-      setBalance(account.lamports / LAMPORTS_PER_SOL);
-    });
-
-    return () => {
-      connection.removeAccountChangeListener(subscriptionId);
-    };
-  }, [publicKey, connection]);
-
-  // Abbreviate the address (e.g., 9b3d...x8y2)
-  const abbreviatedAddress = publicKey
-    ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-4)}`
-    : "";
+  const viewOnExplorer = () => {
+    if (publicKey) {
+      window.open(
+        `https://explorer.solana.com/address/${publicKey.toBase58()}?cluster=devnet`,
+        "_blank"
+      )
+    }
+  }
 
   if (!connected) {
     return (
       <Button
-        onClick={() => setVisible(true)}
-        className="bg-solana text-charcoal hover:bg-solana/90 font-mono font-bold transition-all shadow-[0_0_15px_rgba(20,241,149,0.3)]"
+        onClick={() => connect().catch(console.error)}
+        className="bg-primary text-primary-foreground hover:bg-primary/90 glow-green"
       >
         <Wallet className="mr-2 h-4 w-4" />
-        CONNECT WALLET
+        Connect Wallet
       </Button>
-    );
+    )
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="font-mono border-solana/50 hover:border-solana bg-charcoal/50 backdrop-blur-sm">
+        <Button variant="outline" className="glass border-primary/30 hover:border-primary/50">
           <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-solana animate-pulse" />
-            <span className="text-solana">{balance?.toFixed(3) || "0.000"} SOL</span>
-            <span className="text-muted-foreground">|</span>
-            <span>{abbreviatedAddress}</span>
+            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            <span className="font-mono text-sm">{truncatedAddress}</span>
+            {balance !== null && (
+              <span className="text-xs text-muted-foreground">
+                {balance.toFixed(2)} SOL
+              </span>
+            )}
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 bg-charcoal border-solana/20 text-foreground">
-        <DropdownMenuItem
-          className="cursor-pointer focus:bg-solana/10"
-          onClick={() => window.open(`https://explorer.solana.com/address/${publicKey?.toBase58()}?cluster=devnet`, '_blank')}
-        >
-          <ExternalLink className="mr-2 h-4 w-4 text-solana" />
-          <span>View on Explorer</span>
+      <DropdownMenuContent align="end" className="glass w-56">
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          {wallet?.adapter.name || "Wallet"}
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem className="cursor-pointer" onClick={copyAddress}>
+          <Copy className="mr-2 h-4 w-4" />
+          {copied ? "Copied!" : "Copy Address"}
         </DropdownMenuItem>
+        <DropdownMenuItem className="cursor-pointer" onClick={viewOnExplorer}>
+          <ExternalLink className="mr-2 h-4 w-4" />
+          View on Explorer
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
-          className="cursor-pointer focus:bg-destructive/10 text-destructive"
-          onClick={disconnect}
+          className="cursor-pointer text-destructive"
+          onClick={() => disconnect().catch(console.error)}
         >
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Disconnect</span>
+          Disconnect
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
+  )
 }
