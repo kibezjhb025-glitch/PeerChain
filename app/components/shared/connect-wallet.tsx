@@ -54,7 +54,7 @@ export function ConnectWallet() {
     return (
       <Button
         onClick={() => connect().catch(console.error)}
-        className="bg-primary text-primary-foreground hover:bg-primary/90 glow-green"
+        className="bg-primary text-primary-foreground hover:bg-primary/90 glow-green font-label tracking-wider chamfer-sm"
       >
         <Wallet className="mr-2 h-4 w-4" />
         Connect Wallet
@@ -65,7 +65,7 @@ export function ConnectWallet() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="glass border-primary/30 hover:border-primary/50">
+        <Button variant="outline" className="border-primary/30 hover:border-primary/50 chamfer-sm font-label tracking-wider">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
             <span className="font-mono text-sm">{truncatedAddress}</span>
@@ -78,22 +78,22 @@ export function ConnectWallet() {
           </div>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="glass w-56">
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+      <DropdownMenuContent align="end" className="glass border-border w-56">
+        <div className="px-2 py-1.5 text-xs text-muted-foreground font-label tracking-wider">
           {wallet?.adapter.name || "Wallet"}
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="cursor-pointer" onClick={copyAddress}>
+        <DropdownMenuItem className="cursor-pointer font-label text-xs tracking-wider" onClick={copyAddress}>
           <Copy className="mr-2 h-4 w-4" />
           {copied ? "Copied!" : "Copy Address"}
         </DropdownMenuItem>
-        <DropdownMenuItem className="cursor-pointer" onClick={viewOnExplorer}>
+        <DropdownMenuItem className="cursor-pointer font-label text-xs tracking-wider" onClick={viewOnExplorer}>
           <ExternalLink className="mr-2 h-4 w-4" />
           View on Explorer
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          className="cursor-pointer text-destructive"
+          className="cursor-pointer text-destructive font-label text-xs tracking-wider"
           onClick={() => disconnect().catch(console.error)}
         >
           <LogOut className="mr-2 h-4 w-4" />
