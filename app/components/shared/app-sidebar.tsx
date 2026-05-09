@@ -51,26 +51,26 @@ export function AppSidebar({ className }: { className?: string }) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-border/50 bg-sidebar transition-all duration-300",
+          "fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-border bg-sidebar transition-all duration-300",
           collapsed ? "w-16" : "w-64",
           className
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center justify-between border-b border-border/50 px-4">
+        <div className="flex h-16 items-center justify-between border-b border-border px-4">
           {!collapsed && (
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary glow-green">
-                <span className="text-lg font-bold text-primary-foreground">P</span>
+              <div className="flex h-8 w-8 items-center justify-center chamfer-sm bg-primary glow-green-sm">
+                <span className="text-lg font-bold text-primary-foreground font-heading">P</span>
               </div>
-              <span className="text-lg font-semibold text-foreground">
+              <span className="text-lg font-semibold text-foreground font-heading tracking-wider">
                 Peer<span className="text-primary">Chain</span>
               </span>
             </Link>
           )}
           {collapsed && (
-            <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-lg bg-primary glow-green">
-              <span className="text-lg font-bold text-primary-foreground">P</span>
+            <div className="mx-auto flex h-8 w-8 items-center justify-center chamfer-sm bg-primary glow-green-sm">
+              <span className="text-lg font-bold text-primary-foreground font-heading">P</span>
             </div>
           )}
         </div>
@@ -87,10 +87,10 @@ export function AppSidebar({ className }: { className?: string }) {
                   <Link
                     href={item.href}
                     className={cn(
-                      "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                      "group flex items-center gap-3 chamfer-sm px-3 py-2.5 text-sm font-medium transition-all duration-200 font-label tracking-wider",
                       isActive
-                        ? "bg-primary/10 text-primary border-glow-green"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        ? "bg-primary/10 text-primary border border-primary/30 glow-green-sm"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent"
                     )}
                   >
                     <Icon
@@ -103,7 +103,7 @@ export function AppSidebar({ className }: { className?: string }) {
                   </Link>
                 </TooltipTrigger>
                 {collapsed && (
-                  <TooltipContent side="right" className="glass">
+                  <TooltipContent side="right" className="glass border-border font-label text-xs tracking-wider">
                     {item.label}
                   </TooltipContent>
                 )}
@@ -113,12 +113,12 @@ export function AppSidebar({ className }: { className?: string }) {
         </nav>
 
         {/* Collapse Toggle */}
-        <div className="border-t border-border/50 p-3">
+        <div className="border-t border-border p-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setCollapsed(!collapsed)}
-            className="w-full justify-center text-muted-foreground hover:text-foreground"
+            className="w-full justify-center text-muted-foreground hover:text-foreground font-label text-xs tracking-wider"
           >
             {collapsed ? (
               <ChevronRight className="h-4 w-4" />
