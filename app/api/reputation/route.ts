@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PublicKey } from "@solana/web3.js"
-import { getConnection } from "@/lib/connection"
+import { fetchReputation, buildUpdateReputationTransaction } from "@/lib/solana"
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,23 +14,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const connection = getConnection()
-    const userPubkey = new PublicKey(user)
+    const wallet = new PublicKey(user)
+    const reputation = await fetchReputation(wallet)
 
-    // Fetch user profile from blockchain
-    // This is a placeholder - in reality, you'd fetch the PDA and deserialize
-    const mockReputation = {
-      user: user,
-      score: 25,
-      sessionsCompleted: 3,
-      totalDuration: 180, // minutes
-      peerRatings: [5, 4, 5],
-      lastUpdated: Date.now(),
+    if (!reputation) {
+      return NextResponse.json(
+        { success: false, error: "Reputation state not found. Create a user profile first." },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json({
       success: true,
-      data: mockReputation,
+      data: reputation,
+      source: "blockchain",
     })
   } catch (error) {
     console.error("Reputation fetch error:", error)
@@ -48,31 +45,32 @@ export async function POST(request: NextRequest) {
 
     if (!user || !sessionDuration) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields" },
+        { success: false, error: "Missing required fields: user, sessionDuration" },
         { status: 400 }
       )
     }
 
-    const connection = getConnection()
+    const wallet = new PublicKey(user)
 
-    // In production, this would create an update_reputation transaction
-    // for the user to sign
-    const mockUpdated = {
-      user,
-      score: 27, // Updated score
-      sessionsCompleted: 4,
-      newRating: rating || 5,
-    }
+    const tx = await buildUpdateReputationTransaction(
+      wallet,
+      sessionDuration,
+      rating ?? 5
+    )
+
+    const serialized = tx.serialize({ requireAllSignatures: false }).toString("base64")
 
     return NextResponse.json({
       success: true,
-      data: mockUpdated,
-      message: "Reputation updated successfully",
+      data: {
+        transaction: serialized,
+        message: "Reputation update transaction built — sign and send with your wallet",
+      },
     })
   } catch (error) {
     console.error("Reputation update error:", error)
     return NextResponse.json(
-      { success: false, error: "Failed to update reputation" },
+      { success: false, error: "Failed to build reputation transaction" },
       { status: 500 }
     )
   }
