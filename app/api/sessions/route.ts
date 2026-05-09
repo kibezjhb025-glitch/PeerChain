@@ -1,93 +1,93 @@
 import { NextRequest, NextResponse } from "next/server"
-import { PublicKey, Transaction, SystemProgram } from "@solana/web3.js"
-import type { SessionLogRequest } from "@/shared/types"
-import { getConnection } from "@/lib/connection"
-
-const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID || "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS")
-
-export async function POST(request: NextRequest) {
-  try {
-    const body: SessionLogRequest = await request.json()
-
-    if (!body.sessionId || !body.student || !body.mentor) {
-      return NextResponse.json(
-        { success: false, error: "Missing required fields" },
-        { status: 400 }
-      )
-    }
-
-    const connection = getConnection()
-
-    // Build the transaction for logging session on-chain
-    const sessionPubkey = new PublicKey(body.sessionId)
-    const studentPubkey = new PublicKey(body.student)
-    const mentorPubkey = new PublicKey(body.mentor)
-
-    // In production, this would create and return a serialized transaction
-    // for the wallet to sign
-    const transaction = new Transaction()
-
-    // This is a simplified version - in reality, you'd use Anchor's
-    // program.methods.logSession().accounts().transaction()
-    const instruction = SystemProgram.transfer({
-      fromPubkey: studentPubkey,
-      toPubkey: mentorPubkey,
-      lamports: 1000, // Placeholder
-    })
-
-    transaction.add(instruction)
-
-    const { blockhash } = await connection.getLatestBlockhash()
-    transaction.recentBlockhash = blockhash
-    transaction.feePayer = studentPubkey
-
-    const serialized = transaction.serialize({ requireAllSignatures: false })
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        transaction: serialized.toString("base64"),
-        message: "Session logged successfully",
-      },
-    })
-  } catch (error) {
-    console.error("Session logging error:", error)
-    return NextResponse.json(
-      { success: false, error: "Failed to log session" },
-      { status: 500 }
-    )
-  }
-}
+import { PublicKey } from "@solana/web3.js"
+import { fetchAllSessionsForUser, buildLogSessionTransaction } from "@/lib/solana"
+import { prisma } from "@/lib/prisma"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const user = searchParams.get("user")
 
-    const connection = getConnection()
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: "User parameter required" },
+        { status: 400 }
+      )
+    }
 
-    // Fetch user's sessions from blockchain
-    // This is a placeholder - in reality, you'd query the program accounts
-    const mockSessions = [
-      {
-        sessionId: "session1",
-        student: user || "",
-        mentor: "mentor1",
-        duration: 60,
-        sessionType: "OneOnOne",
-        completed: true,
-        timestamp: Date.now(),
-      },
-    ]
+    const wallet = new PublicKey(user)
+    const sessions = await fetchAllSessionsForUser(wallet)
 
     return NextResponse.json({
       success: true,
-      data: mockSessions,
+      data: sessions,
+      source: "blockchain",
     })
   } catch (error) {
     console.error("Fetch sessions error:", error)
     return NextResponse.json(
       { success: false, error: "Failed to fetch sessions" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { sessionId, student, mentor, duration, sessionType, topic } = body
+
+    if (!sessionId || !student || !mentor || !duration || topic === undefined) {
+      return NextResponse.json(
+        { success: false, error: "Missing required fields: sessionId, student, mentor, duration, topic" },
+        { status: 400 }
+      )
+    }
+
+    const sessionPubkey = new PublicKey(sessionId)
+    const studentPubkey = new PublicKey(student)
+    const mentorPubkey = new PublicKey(mentor)
+
+    const tx = await buildLogSessionTransaction(
+      studentPubkey,
+      mentorPubkey,
+      sessionPubkey,
+      duration,
+      sessionType ?? 0,
+      topic
+    )
+
+    const serialized = tx.serialize({ requireAllSignatures: false }).toString("base64")
+
+    try {
+      const session = await getServerSession(authOptions)
+      if (session?.user?.id) {
+        await prisma.mentorshipSession.create({
+          data: {
+            mentorId: session.user.id,
+            studentId: session.user.id,
+            topic,
+            duration,
+            txSignature: null,
+            completed: true,
+          },
+        }).catch(() => {})
+      }
+    } catch {}
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        transaction: serialized,
+        message: "Session transaction built — sign and send with your wallet",
+      },
+    })
+  } catch (error) {
+    console.error("Session logging error:", error)
+    return NextResponse.json(
+      { success: false, error: "Failed to build session transaction" },
       { status: 500 }
     )
   }
