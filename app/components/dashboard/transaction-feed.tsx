@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { ArrowUpRight, ArrowDownLeft, Loader2, ExternalLink } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { ArrowUpRight, ArrowDownLeft, Loader2, ExternalLink, Terminal } from "lucide-react"
 import { useWallet } from "@solana/wallet-adapter-react"
-import { PublicKey } from "@solana/web3.js"
+import { usePeerChainStore } from "@/store/use-peerchain"
 
 interface Transaction {
   id: string
@@ -16,28 +16,21 @@ interface Transaction {
 
 export function TransactionFeed() {
   const { publicKey, connection } = useWallet()
+  const { cachedTransactions, transactionsLoading, setCachedTransactions, setTransactionsLoading } = usePeerChainStore()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(false)
+  const fetchedRef = useRef(false)
 
   useEffect(() => {
-    if (publicKey && connection) {
+    if (publicKey && connection && !fetchedRef.current) {
+      fetchedRef.current = true
       fetchTransactions()
     }
   }, [publicKey, connection])
 
-  const fetchTransactions = async () => {
-    if (!publicKey || !connection) return
-
-    setLoading(true)
-    try {
-      // Fetch recent transactions for the wallet
-      const signatures = await connection.getSignaturesForAddress(publicKey, {
-        limit: 10,
-      })
-
-      const txs: Transaction[] = signatures.map((sig, index) => {
+  useEffect(() => {
+    if (cachedTransactions.length > 0) {
+      const txs: Transaction[] = cachedTransactions.map((sig: any, index: number) => {
         const timeAgo = getTimeAgo(sig.blockTime ? sig.blockTime * 1000 : Date.now())
-
         return {
           id: sig.signature,
           signature: sig.signature,
@@ -52,14 +45,24 @@ export function TransactionFeed() {
           timestamp: sig.blockTime ? sig.blockTime * 1000 : Date.now(),
         }
       })
-
       setTransactions(txs)
+    }
+  }, [cachedTransactions])
+
+  const fetchTransactions = async () => {
+    if (!publicKey || !connection) return
+
+    setTransactionsLoading(true)
+    try {
+      const signatures = await connection.getSignaturesForAddress(publicKey, {
+        limit: 10,
+      })
+      setCachedTransactions(signatures)
     } catch (error) {
       console.error("Failed to fetch transactions:", error)
-      // Fallback to empty state
-      setTransactions([])
+      setCachedTransactions([])
     } finally {
-      setLoading(false)
+      setTransactionsLoading(false)
     }
   }
 
@@ -84,11 +87,13 @@ export function TransactionFeed() {
 
   if (!publicKey) {
     return (
-      <div className="glass-card rounded-xl p-4">
+      <div className="glass-card p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-medium text-foreground">Recent Transactions</h3>
+          <h3 className="text-sm font-heading tracking-wider text-foreground">
+            <span className="terminal-prompt">Recent Transactions</span>
+          </h3>
         </div>
-        <div className="py-8 text-center text-sm text-muted-foreground">
+        <div className="py-8 text-center text-sm text-muted-foreground font-mono">
           Connect wallet to view transactions
         </div>
       </div>
@@ -96,21 +101,23 @@ export function TransactionFeed() {
   }
 
   return (
-    <div className="glass-card rounded-xl p-4">
+    <div className="glass-card p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">Recent Transactions</h3>
+        <h3 className="text-sm font-heading tracking-wider text-foreground">
+          <span className="terminal-prompt">Recent Transactions</span>
+        </h3>
         <div className="flex items-center gap-1.5">
-          {loading ? (
+          {transactionsLoading ? (
             <Loader2 className="h-3 w-3 animate-spin text-primary" />
           ) : (
             <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
           )}
-          <span className="text-xs text-muted-foreground">Live</span>
+          <span className="text-xs text-muted-foreground font-label tracking-wider">Live</span>
         </div>
       </div>
       <div className="space-y-2">
-        {loading ? (
-          <div className="py-4 text-center text-xs text-muted-foreground">
+        {transactionsLoading ? (
+          <div className="py-4 text-center text-xs text-muted-foreground font-mono">
             <Loader2 className="mx-auto mb-2 h-4 w-4 animate-spin" />
             Loading transactions...
           </div>
@@ -118,11 +125,11 @@ export function TransactionFeed() {
           transactions.map((tx) => (
             <div
               key={tx.id}
-              className="flex items-center justify-between rounded-lg bg-muted/30 px-3 py-2 transition-all hover:bg-muted/50"
+              className="flex items-center justify-between chamfer-sm bg-muted/30 px-3 py-2 transition-all hover:bg-muted/50 border border-border/30"
             >
               <div className="flex items-center gap-3">
                 <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full ${
+                  className={`flex h-7 w-7 items-center justify-center chamfer-sm ${
                     tx.type === "grant_received"
                       ? "bg-secondary/20 text-secondary"
                       : "bg-primary/20 text-primary"
@@ -135,14 +142,14 @@ export function TransactionFeed() {
                   )}
                 </div>
                 <div>
-                  <p className="text-xs text-foreground">{tx.description}</p>
+                  <p className="text-xs text-foreground font-label tracking-wider">{tx.description}</p>
                   <p className="font-mono text-[10px] text-muted-foreground">
                     {tx.signature.slice(0, 12)}...
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[10px] text-muted-foreground font-mono">
                   {tx.timeAgo}
                 </span>
                 <button
@@ -155,7 +162,7 @@ export function TransactionFeed() {
             </div>
           ))
         ) : (
-          <div className="py-8 text-center text-xs text-muted-foreground">
+          <div className="py-8 text-center text-xs text-muted-foreground font-mono">
             No transactions yet
           </div>
         )}
