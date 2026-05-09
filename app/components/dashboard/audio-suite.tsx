@@ -7,21 +7,17 @@ import {
   SkipBack,
   SkipForward,
   Volume2,
-  Upload,
   FileText,
   AudioLines,
-  CheckCircle,
-  Clock,
   Loader2,
   Trash2,
+  Radio,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 
-// Audio Player Widget
 function AudioPlayer() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -47,23 +43,27 @@ function AudioPlayer() {
   }
 
   return (
-    <Card className="glass-card border-border/50 border-glow-green">
+    <Card className="glass-card border-glow-green">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <AudioLines className="h-5 w-5 text-primary" />
-            <span className="text-sm font-medium text-foreground">Audio Brief</span>
+            <Radio className="h-5 w-5 text-primary" />
+            <span className="text-sm font-heading tracking-wider text-foreground">
+              <span className="terminal-prompt">Audio Brief</span>
+            </span>
           </div>
-          <Badge className="bg-primary/20 text-primary border-0">ElevenLabs</Badge>
+          <Badge className="bg-primary/20 text-primary border-primary/30 font-label tracking-wider">
+            ElevenLabs
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Track Info */}
-        <div className="rounded-lg bg-muted/30 p-4">
-          <h4 className="font-medium text-foreground">
+        <div className="chamfer-sm bg-muted/30 p-4 border border-border/30">
+          <h4 className="font-medium text-foreground font-label tracking-wider">
             PeerChain Introduction
           </h4>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1 font-mono">
             Learn how StudyStream converts learning into value
           </p>
         </div>
@@ -76,7 +76,7 @@ function AudioPlayer() {
               <div
                 key={i}
                 className={`w-1 rounded-full transition-all duration-150 ${
-                  isActive ? "bg-primary" : "bg-muted/50"
+                  isActive ? "bg-primary glow-green-sm" : "bg-muted/50"
                 } ${isPlaying && isActive ? "animate-pulse" : ""}`}
                 style={{
                   height: `${Math.sin(i * 0.5) * 16 + 20}px`,
@@ -95,7 +95,7 @@ function AudioPlayer() {
             onValueChange={(value) => setCurrentTime(value[0])}
             className="cursor-pointer"
           />
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between text-xs text-muted-foreground font-mono">
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </div>
@@ -108,7 +108,7 @@ function AudioPlayer() {
           </Button>
           <Button
             size="icon"
-            className="h-12 w-12 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 glow-green"
+            className="h-12 w-12 rounded-none bg-primary text-primary-foreground hover:bg-primary/90 glow-green chamfer-sm"
             onClick={handlePlayPause}
           >
             {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
@@ -136,7 +136,6 @@ function AudioPlayer() {
   )
 }
 
-// Text to Audio Component
 function TextToAudio() {
   const [text, setText] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
@@ -180,11 +179,11 @@ function TextToAudio() {
   }
 
   return (
-    <Card className="glass-card border-border/50">
+    <Card className="glass-card border-glow-blue">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+        <CardTitle className="flex items-center gap-2 text-sm font-label tracking-wider">
           <AudioLines className="h-4 w-4 text-secondary" />
-          <span className="text-muted-foreground">Generate Audio Brief</span>
+          <span className="text-muted-foreground terminal-prompt">Generate Audio</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -192,22 +191,22 @@ function TextToAudio() {
           placeholder="Enter text to convert to speech..."
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="w-full min-h-[100px] rounded-lg border border-border/50 bg-input/50 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+          className="w-full min-h-[100px] chamfer-sm border border-border/50 bg-input/50 p-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 font-mono resize-none"
         />
 
         {error && (
-          <p className="text-xs text-destructive">{error}</p>
+          <p className="text-xs text-destructive font-mono">{error}</p>
         )}
 
         {audioUrl && (
-          <div className="rounded-lg bg-muted/30 p-3">
+          <div className="chamfer-sm bg-muted/30 p-3 border border-border/30">
             <audio controls src={audioUrl} className="w-full" />
           </div>
         )}
 
         <div className="flex gap-2">
           <Button
-            className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/90 glow-blue"
+            className="flex-1 bg-secondary text-secondary-foreground hover:bg-secondary/90 glow-blue font-label tracking-wider chamfer-sm"
             onClick={generateAudio}
             disabled={isGenerating || !text.trim()}
           >
@@ -224,7 +223,7 @@ function TextToAudio() {
             )}
           </Button>
           {audioUrl && (
-            <Button variant="outline" size="icon" onClick={clearAudio}>
+            <Button variant="outline" size="icon" onClick={clearAudio} className="chamfer-sm border-border">
               <Trash2 className="h-4 w-4" />
             </Button>
           )}
