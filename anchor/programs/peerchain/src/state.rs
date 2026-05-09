@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 pub struct UserProfile {
     pub authority: Pubkey,
     pub name: String,
+    pub role: UserRole,
     pub reputation: u64,
     pub total_sessions: u64,
     pub total_funded: u64,
@@ -11,12 +12,15 @@ pub struct UserProfile {
 }
 
 impl UserProfile {
-    pub const LEN: usize = 32 + // authority
-        4 + 50 + // name (max 50 chars)
-        8 + // reputation
-        8 + // total_sessions
-        8 + // total_funded
-        1; // bump
+    pub const LEN: usize = 32 + 4 + 50 + 1 + 8 + 8 + 8 + 1;
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
+pub enum UserRole {
+    Student,
+    Mentor,
+    Volunteer,
+    Admin,
 }
 
 #[account]
@@ -26,20 +30,14 @@ pub struct MentorshipSession {
     pub mentor: Pubkey,
     pub duration: i64,
     pub session_type: SessionType,
+    pub topic: String,
     pub completed: bool,
     pub timestamp: i64,
     pub bump: u8,
 }
 
 impl MentorshipSession {
-    pub const LEN: usize = 32 + // session_id
-        32 + // student
-        32 + // mentor
-        8 + // duration
-        1 + // session_type
-        1 + // completed
-        8 + // timestamp
-        1; // bump
+    pub const LEN: usize = 32 + 32 + 32 + 8 + 1 + 4 + 64 + 1 + 8 + 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
@@ -63,14 +61,7 @@ pub struct FundingRequest {
 }
 
 impl FundingRequest {
-    pub const LEN: usize = 32 + // request_id
-        32 + // requester
-        8 + // amount
-        4 + 200 + // reason (max 200 chars)
-        1 + // status
-        8 + // reputation_score
-        8 + // timestamp
-        1; // bump
+    pub const LEN: usize = 32 + 32 + 8 + 4 + 200 + 1 + 8 + 8 + 1;
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
@@ -79,6 +70,7 @@ pub enum FundingStatus {
     Approved,
     Rejected,
     Distributed,
+    Cancelled,
 }
 
 #[account]
@@ -93,13 +85,7 @@ pub struct ReputationState {
 }
 
 impl ReputationState {
-    pub const LEN: usize = 32 + // user
-        8 + // sessions_completed
-        8 + // total_duration
-        4 + 10 + // peer_ratings (max 10 ratings)
-        8 + // score
-        8 + // last_updated
-        1; // bump
+    pub const LEN: usize = 32 + 8 + 8 + 4 + 10 + 8 + 8 + 1;
 }
 
 #[account]
@@ -112,9 +98,83 @@ pub struct TreasuryPool {
 }
 
 impl TreasuryPool {
-    pub const LEN: usize = 32 + // authority
-        8 + // total_funds
-        8 + // distributed_funds
-        8 + // active_requests
-        1; // bump
+    pub const LEN: usize = 32 + 8 + 8 + 8 + 1;
+}
+
+#[event]
+pub struct UserCreated {
+    pub authority: Pubkey,
+    pub name: String,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct UserUpdated {
+    pub authority: Pubkey,
+    pub name: String,
+    pub new_role: UserRole,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct SessionLogged {
+    pub session_id: Pubkey,
+    pub student: Pubkey,
+    pub mentor: Pubkey,
+    pub duration: i64,
+    pub session_type: SessionType,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct ReputationUpdated {
+    pub user: Pubkey,
+    pub new_score: u64,
+    pub sessions_completed: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct FundingRequested {
+    pub request_id: Pubkey,
+    pub requester: Pubkey,
+    pub amount: u64,
+    pub reason: String,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct FundingApproved {
+    pub request_id: Pubkey,
+    pub approved_by: Pubkey,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct FundingRejected {
+    pub request_id: Pubkey,
+    pub rejected_by: Pubkey,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct FundsDistributed {
+    pub request_id: Pubkey,
+    pub requester: Pubkey,
+    pub amount: u64,
+    pub treasury_balance: u64,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct FundingCancelled {
+    pub request_id: Pubkey,
+    pub requester: Pubkey,
+    pub timestamp: i64,
+}
+
+#[event]
+pub struct TreasuryInitialized {
+    pub authority: Pubkey,
+    pub timestamp: i64,
 }
