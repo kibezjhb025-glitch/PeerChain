@@ -1,9 +1,7 @@
-// PeerChain Shared Types
-// These interfaces mirror the Anchor program accounts
-
 export interface UserProfile {
   authority: string
   name: string
+  role: number
   reputation: number
   totalSessions: number
   totalFunded: number
@@ -16,16 +14,17 @@ export interface MentorshipSession {
   mentor: string
   duration: number
   sessionType: SessionType
+  topic: string
   completed: boolean
   timestamp: number
   bump: number
 }
 
 export enum SessionType {
-  OneOnOne = "OneOnOne",
-  GroupStudy = "GroupStudy",
-  CodeReview = "CodeReview",
-  Mentorship = "Mentorship",
+  OneOnOne,
+  GroupStudy,
+  CodeReview,
+  Mentorship,
 }
 
 export interface FundingRequest {
@@ -40,10 +39,11 @@ export interface FundingRequest {
 }
 
 export enum FundingStatus {
-  Pending = "Pending",
-  Approved = "Approved",
-  Rejected = "Rejected",
-  Distributed = "Distributed",
+  Pending,
+  Approved,
+  Rejected,
+  Distributed,
+  Cancelled,
 }
 
 export interface ReputationState {
@@ -64,22 +64,32 @@ export interface TreasuryPool {
   bump: number
 }
 
-// Frontend state types
-export interface PeerChainState {
-  userProfile: UserProfile | null
-  reputation: ReputationState | null
-  sessions: MentorshipSession[]
-  fundingRequests: FundingRequest[]
-  treasury: TreasuryPool | null
-  loading: boolean
-  error: string | null
+export interface WalletVerificationRequest {
+  wallet: string
+  signature: string
+  message: string
 }
 
-// API Response types
-export interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
+export interface WalletVerificationResponse {
+  verified: boolean
+  wallet: string
+  message: string
+}
+
+export interface FundingActionRequest {
+  authority: string
+  requestId: string
+  action: "approve" | "reject"
+}
+
+export interface DistributeRequest {
+  authority: string
+  requestId: string
+}
+
+export interface UserCreateRequest {
+  wallet: string
+  name: string
 }
 
 export interface SessionLogRequest {
@@ -88,16 +98,34 @@ export interface SessionLogRequest {
   mentor: string
   duration: number
   sessionType: SessionType
+  topic: string
+}
+
+export interface ReputationUpdateRequest {
+  user: string
+  sessionDuration: number
+  rating: number
 }
 
 export interface FundingRequestPayload {
   requestId: string
+  requester: string
   amount: number
   reason: string
-  reputationScore: number
 }
 
-// ElevenLabs types
+export interface ApiResponse<T> {
+  success: boolean
+  data?: T
+  error?: string
+  source?: string
+}
+
+export interface TransactionResponse {
+  transaction: string
+  message: string
+}
+
 export interface AudioBriefRequest {
   text: string
   voiceId?: string
@@ -106,4 +134,25 @@ export interface AudioBriefRequest {
 export interface AudioBriefResponse {
   audioUrl: string
   transcript: string
+}
+
+export interface Notification {
+  id: string
+  type: string
+  title: string
+  body: string | null
+  read: boolean
+  link: string | null
+  createdAt: string
+}
+
+export interface AuditLog {
+  id: string
+  action: string
+  entityType: string
+  entityId: string | null
+  wallet: string | null
+  txSignature: string | null
+  metadata: Record<string, unknown> | null
+  createdAt: string
 }
