@@ -1,21 +1,15 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Orbitron, JetBrains_Mono, Share_Tech_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
-import './styles/globals.css' // Updated path
+import './styles/globals.css'
 
-// PeerChain Infrastructure Imports
 import { SolanaProvider } from '@/lib/solana-provider'
 import { ThemeProvider } from '@/components/shared/theme-provider'
+import { AuthProvider } from '@/components/shared/auth-provider'
 
-const geistSans = Geist({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-});
+const orbitron = Orbitron({ subsets: ["latin"], variable: "--font-orbitron", display: "swap" })
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains-mono", display: "swap" })
+const shareTechMono = Share_Tech_Mono({ weight: "400", subsets: ["latin"], variable: "--font-share-tech", display: "swap" })
 
 export const metadata: Metadata = {
   title: 'PeerChain - Decentralized Peer-Learning & Micro-Funding',
@@ -31,24 +25,17 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          <SolanaProvider>
-            {children}
-            {process.env.NODE_ENV === 'production' && <Analytics />}
-          </SolanaProvider>
+      <body className={`${orbitron.variable} ${jetbrainsMono.variable} ${shareTechMono.variable} font-mono antialiased`}>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} disableTransitionOnChange>
+          <AuthProvider>
+            <SolanaProvider>
+              {children}
+              {process.env.NODE_ENV === 'production' && <Analytics />}
+            </SolanaProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
