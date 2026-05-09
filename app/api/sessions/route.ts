@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Connection, PublicKey, Transaction, SystemProgram } from "@solana/web3.js"
-import { Program, AnchorProvider, web3 } from "@coral-xyz/anchor"
-import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } from "@solana/spl-token"
+import { PublicKey, Transaction, SystemProgram } from "@solana/web3.js"
 import type { SessionLogRequest } from "@/shared/types"
+import { getConnection } from "@/lib/connection"
 
-const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com"
 const PROGRAM_ID = new PublicKey(process.env.PROGRAM_ID || "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS")
 
 export async function POST(request: NextRequest) {
@@ -18,7 +16,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const connection = new Connection(SOLANA_RPC, "confirmed")
+    const connection = getConnection()
 
     // Build the transaction for logging session on-chain
     const sessionPubkey = new PublicKey(body.sessionId)
@@ -66,7 +64,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const user = searchParams.get("user")
 
-    const connection = new Connection(SOLANA_RPC, "confirmed")
+    const connection = getConnection()
 
     // Fetch user's sessions from blockchain
     // This is a placeholder - in reality, you'd query the program accounts

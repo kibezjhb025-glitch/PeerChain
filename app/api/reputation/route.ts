@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Connection, PublicKey } from "@solana/web3.js"
-
-const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com"
+import { PublicKey } from "@solana/web3.js"
+import { getConnection } from "@/lib/connection"
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +14,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const connection = new Connection(SOLANA_RPC, "confirmed")
+    const connection = getConnection()
     const userPubkey = new PublicKey(user)
 
     // Fetch user profile from blockchain
@@ -54,7 +53,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const connection = new Connection(SOLANA_RPC, "confirmed")
+    const connection = getConnection()
 
     // In production, this would create an update_reputation transaction
     // for the user to sign

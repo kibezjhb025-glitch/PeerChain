@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { Connection, PublicKey } from "@solana/web3.js"
+import { PublicKey } from "@solana/web3.js"
 import type { FundingRequestPayload } from "@/shared/types"
-
-const SOLANA_RPC = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com"
+import { getConnection } from "@/lib/connection"
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +14,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const connection = new Connection(SOLANA_RPC, "confirmed")
+    const connection = getConnection()
 
     // In production, this would create a transaction for funding request
     // that the user signs with their wallet
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const user = searchParams.get("user")
 
-    const connection = new Connection(SOLANA_RPC, "confirmed")
+    const connection = getConnection()
 
     // Placeholder - in reality, fetch from blockchain
     const mockRequests = [
